@@ -8,6 +8,7 @@
  * north, east, south, west with respect to each other.
  * It uses a vector to store map data and navigates nodes by calculating their
  * index with (x+mapwidth*y). Pretty clumsy but gets the job done.
+ * (you know solving some problems in CS textbooks and 8-bit video games)
  *
  * This file is distributed under GNU GPLv3, see LICENSE file.
  * If you haven't received a file named LICENSE see <http://www.gnu.org/licences>
@@ -24,6 +25,7 @@ using namespace std;
 #include <fstream> //for reading text files
 #include <cstdlib> //atoi(), for reading numbers from text files
 #include <vector>
+#include "digraph.h" //only for convert_map2dig()
 
 class coord {	//integer coordinates, like a point
 public:
@@ -85,6 +87,8 @@ public:
 	coord getStart();
 	coord getEnd();
 	map_node *getNode(coord nodecoord);
+	void convert_map2dig(digraph<coord> *digObj);
+	int coord2ind(coord xy);
 	friend ostream& operator<<(ostream& os, map& omap);
 
 private:
@@ -315,5 +319,60 @@ ostream& operator<<(ostream& os, map& omap) {
 
 //I'll need a operator= for map class though since map data will be held in a memory block pointed by a pointer.
 //I'll also need a copy constructor
+
+//takes pointers to a map and an empty directed graph object.
+void map::convert_map2dig(digraph<coord> *digObj) {
+	//first copy all map nodes (and coords inside them) to digraph
+	vector<map_node>::iterator mapit;
+	for(mapit = mapData->begin();mapit!=mapData->end();mapit++) {
+		digObj->addNode((*mapit).getCoord());
+	}
+	//then connect all the north links (except for northern most nodes)
+	/*
+	 * off kafam basmiyo. iki tane ayni iterator mu olacak yoksa bi ondan bi ondan mi?
+	 * aslinda mapin boyuna gore iki map iterator olacak
+	 * hatta ne map iteratoru lan! tum dig nodelari indexi index-width olana baglayacaz
+	 * east icin index->index+1, index%width=-1 olanlari alma yalniz
+	 * bu kadar basit.
+	 * 4 kere yap bitti
+	 */
+	int width=this->getMapWidth();
+	int nodecount = this->getMapArea();
+	for(int i=0;i<nodecount-width;i++) digObj->addArc(i, i+width);
+	for(int i=0;i<nodecount;i++) {
+		if(i%width!=width-1) digObj->addArc(i, i+1);
+	}
+	for(int i=width;i<nodecount;i++) digObj->addArc(i, i-width);
+	for(int i=0;i<nodecount;i++) {
+		if(i%width!=0) digObj->addArc(i, i-1);
+	}
+	//now remove the walls (mapNodes with index=1)
+	int iNode = 0;
+	for(mapit = mapData->begin();mapit!=mapData->end();mapit++) {
+		if((*mapit).getIndex()==1)	digObj->removeNode(iNode);
+		iNode++;
+	}
+}
+
+int map::coord2ind(coord xy) {
+	return xy.getx()+(xy.gety()*(this->getMapWidth()));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #endif
